@@ -1,0 +1,27 @@
+{
+    "development": {
+      "username": "admin",
+      "password": "Admin951022!",
+      "database": "crispy_cookie",
+      "host": "127.0.0.1",
+      "port": 3307,
+      "dialect": "mysql"
+    },
+    "test": {
+      "username": "admin",
+      "password": "Admin951022!",
+      "database": "crispy_cookie_test",
+      "host": "127.0.0.1",
+      "port": 3307,
+      "dialect": "mysql"
+    },
+    "production": {
+      "username": "admin",
+      "password": "Admin951022!",
+      "database": "crispy_cookie_prod",
+      "host": "127.0.0.1",
+      "port": 3307,
+      "dialect": "mysql"
+    }
+  }
+  
