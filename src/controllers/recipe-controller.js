@@ -1,79 +1,69 @@
 const RecipeService = require("../services/recipe-service");
 const RecipeSaveDto = require("../dtos/recipe/recipe-save-dto");
+const AppError = require("../utils/app-error");
 
 class RecipeController {
-  static async create(req, res) {
+  static async create(req, res, next) {
     try {
       const dto = new RecipeSaveDto(req.body);
       const recipe = await RecipeService.create(dto);
       res.status(201).json(recipe);
-    } catch (error) {
-      console.error("Error al crear receta:", error);
-      res.status(500).json({ error: error.message });
+    } catch (err) {
+      next(err);
     }
   }
 
-  static async getAll(req, res) {
+  static async getAll(req, res, next) {
     try {
       const recipes = await RecipeService.getAll();
       res.json(recipes);
-    } catch (error) {
-      console.error("Error al listar recetas:", error);
-      res.status(500).json({ error: error.message });
+    } catch (err) {
+      next(err);
     }
   }
 
-  static async getById(req, res) {
+  static async getById(req, res, next) {
     try {
       const recipe = await RecipeService.getById(req.params.id);
-      if (!recipe) {
-        return res.status(404).json({ message: "Receta no encontrada" });
-      }
       res.json(recipe);
-    } catch (error) {
-      console.error("Error al obtener receta:", error);
-      res.status(500).json({ error: error.message });
+    } catch (err) {
+      next(err);
     }
   }
 
-  static async update(req, res) {
+  static async update(req, res, next) {
     try {
       const dto = new RecipeSaveDto(req.body);
-      const recipe = await RecipeService.update(req.params.id, dto);
+      const recipe = await RecipeService.update(
+        req.params.id,
+        dto,
+        req.body.userId
+      );
       res.json(recipe);
-    } catch (error) {
-      console.error("Error al actualizar receta:", error);
-      res.status(500).json({ error: error.message });
+    } catch (err) {
+      next(err);
     }
   }
 
-  static async delete(req, res) {
+  static async delete(req, res, next) {
     try {
-      const deleted = await RecipeService.delete(req.params.id);
-      if (!deleted) {
-        return res.status(404).json({ message: "Receta no encontrada" });
-      }
+      await RecipeService.delete(req.params.id, req.body.userId);
       res.json({ message: "Receta eliminada" });
-    } catch (error) {
-      console.error("Error al eliminar receta:", error);
-      res.status(500).json({ error: error.message });
+    } catch (err) {
+      next(err);
     }
   }
 
-  static async search(req, res) {
+  static async search(req, res, next) {
     try {
       const query = req.query.q;
       if (!query) {
-        return res
-          .status(400)
-          .json({ message: "Debe proporcionar un término de búsqueda" });
+        throw new AppError("Debe proporcionar un término de búsqueda", 400);
       }
-
       const recipes = await RecipeService.search(query);
       res.json(recipes);
-    } catch (error) {
-      console.error("Error al buscar recetas:", error);
-      res.status(500).json({ error: error.message });
+    } catch (err) {
+      next(err);
     }
   }
 }

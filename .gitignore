@@ -9,20 +9,20 @@ pnpm-debug.log*
 logs
 *.log
 
-# Variables de entorno
+
 .env
 
-# Datos de base de datos MySQL (Docker volumen local)
+
 mysql_data/
 
-# Archivos del sistema
+
 .DS_Store
 Thumbs.db
 
-# Coverage / pruebas
+
 coverage/
 .nyc_output/
 
-# Builds o dist
+
 dist/
 build/

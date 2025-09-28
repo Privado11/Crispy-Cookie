@@ -1,6 +1,7 @@
 const { Recipe, User, Ingredient, RecipeIngredient } = require("../models");
 const RecipeMapper = require("../dtos/recipe/recipe-mappers");
 const { Op } = require("sequelize");
+const AppError = require("../utils/app-error");
 
 class RecipeService {
   static async create(recipeSaveDto) {
@@ -31,8 +32,7 @@ class RecipeService {
         await RecipeIngredient.create({
           recipeId: recipe.id,
           ingredientId: ingredient.id,
-          quantity: parseFloat(ing.quantity) || 0,
-          unit: ing.unit,
+          quantity: ing.quantity,
         });
       }
     }
@@ -40,7 +40,7 @@ class RecipeService {
     const createdRecipe = await Recipe.findByPk(recipe.id, {
       include: [
         { model: User },
-        { model: Ingredient, through: { attributes: ["quantity", "unit"] } },
+        { model: Ingredient, through: { attributes: ["quantity"] } },
       ],
     });
 
@@ -49,8 +49,9 @@ class RecipeService {
 
   static async update(id, recipeSaveDto, currentUserId) {
     const recipe = await Recipe.findByPk(id);
-    if (!recipe || recipe.userId !== currentUserId) {
-      throw new Error("No autorizado para editar esta receta");
+    if (!recipe) throw new AppError("Receta no encontrada", 404);
+    if (recipe.userId !== currentUserId) {
+      throw new AppError("No autorizado para editar esta receta", 403);
     }
 
     const recipeEntity = RecipeMapper.saveDtoToEntity(recipeSaveDto);
@@ -85,8 +86,7 @@ class RecipeService {
         await RecipeIngredient.create({
           recipeId: id,
           ingredientId: ingredient.id,
-          quantity: parseFloat(ing.quantity) || 0,
-          unit: ing.unit,
+          quantity: ing.quantity,
         });
       }
     }
@@ -94,12 +94,68 @@ class RecipeService {
     const updatedRecipe = await Recipe.findByPk(id, {
       include: [
         { model: User },
-        { model: Ingredient, through: { attributes: ["quantity", "unit"] } },
+        { model: Ingredient, through: { attributes: ["quantity"] } },
       ],
     });
 
     return RecipeMapper.toDto(updatedRecipe);
   }
+
+  static async getAll() {
+    const recipes = await Recipe.findAll({
+      include: [
+        { model: User },
+        { model: Ingredient, through: { attributes: ["quantity"] } },
+      ],
+    });
+    return recipes.map((recipe) => RecipeMapper.toDto(recipe));
+  }
+
+  static async getById(id) {
+    const recipe = await Recipe.findByPk(id, {
+      include: [
+        { model: User },
+        { model: Ingredient, through: { attributes: ["quantity"] } },
+      ],
+    });
+    if (!recipe) throw new AppError("Receta no encontrada", 404);
+    return RecipeMapper.toDto(recipe);
+  }
+
+  static async delete(id, currentUserId) {
+    const recipe = await Recipe.findByPk(id);
+    if (!recipe) throw new AppError("Receta no encontrada", 404);
+    if (recipe.userId !== currentUserId) {
+      throw new AppError("No autorizado para eliminar esta receta", 403);
+    }
+    await recipe.destroy();
+    return true;
+  }
+
+  static async search(query) {
+    const recipes = await Recipe.findAll({
+      include: [
+        { model: User },
+        {
+          model: Ingredient,
+          through: { attributes: ["quantity"] },
+          required: false 
+        }
+      ],
+      where: {
+        [Op.or]: [
+          { title: { [Op.like]: `%${query}%` } },
+          { description: { [Op.like]: `%${query}%` } },
+          { "$Ingredients.name$": { [Op.like]: `%${query}%` } }
+        ]
+      },
+      subQuery: false 
+    });
+  
+    return recipes.map((r) => RecipeMapper.toDto(r));
+  }
+  
+  
 }
 
 module.exports = RecipeService;

@@ -1,6 +1,7 @@
 const { User } = require("../models");
 const UserMapper = require("../dtos/user/user-mappers");
 const bcrypt = require("bcrypt");
+const AppError = require("../utils/app-error");
 
 class UserService {
   static async create(userSaveDto) {
@@ -12,16 +13,19 @@ class UserService {
     }
 
     const newUser = await User.create(userEntity);
-
     return UserMapper.toDto(newUser);
   }
 
   static async getById(id) {
     const user = await User.findByPk(id);
+    if (!user) throw new AppError("Usuario no encontrado", 404);
     return UserMapper.toDto(user);
   }
 
   static async update(id, userSaveDto) {
+    const user = await User.findByPk(id);
+    if (!user) throw new AppError("Usuario no encontrado", 404);
+
     const userEntity = UserMapper.saveDtoToEntity(userSaveDto);
 
     if (userEntity.password) {
@@ -30,22 +34,26 @@ class UserService {
     }
 
     await User.update(userEntity, { where: { id } });
-
     const updatedUser = await User.findByPk(id);
     return UserMapper.toDto(updatedUser);
   }
 
   static async delete(id) {
-    const deleted = await User.destroy({ where: { id } });
-    return deleted > 0;
+    const user = await User.findByPk(id);
+    if (!user) throw new AppError("Usuario no encontrado", 404);
+
+    await user.destroy();
+    return true;
   }
 
   static async validateCredentials(email, password) {
     const user = await User.findOne({ where: { email } });
-    if (!user) return null;
+    if (!user) throw new AppError("Credenciales inválidas", 401);
 
     const isValid = await bcrypt.compare(password, user.password);
-    return isValid ? UserMapper.toDto(user) : null;
+    if (!isValid) throw new AppError("Credenciales inválidas", 401);
+
+    return UserMapper.toDto(user);
   }
 }
 

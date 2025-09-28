@@ -12,7 +12,6 @@ class RecipeDto {
       id: ing.id,
       name: ing.name,
       quantity: ing.RecipeIngredient ? ing.RecipeIngredient.quantity : null,
-      unit: ing.RecipeIngredient ? ing.RecipeIngredient.unit : null
     }));
   }
 }
