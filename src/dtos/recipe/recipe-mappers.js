@@ -1,6 +1,4 @@
 const RecipeDto = require("./recipe-dto");
-const RecipeSaveDto = require("./recipe-save-dto");
-const UserDto = require("../user/user-dto");
 
 class RecipeMapper {
   static toDto(recipeEntity) {
@@ -10,9 +8,12 @@ class RecipeMapper {
       id: recipeEntity.id,
       title: recipeEntity.title,
       description: recipeEntity.description,
+      preparation: recipeEntity.preparation,
       image: recipeEntity.image,
-      user: recipeEntity.User ? recipeEntity.User : null,
-      ingredients: recipeEntity.Ingredients || []
+      User: recipeEntity.User ? recipeEntity.User : null,
+      Ingredients: recipeEntity.Ingredients || [],
+      RecipeComments: recipeEntity.RecipeComments || [],
+      RecipeRatings: recipeEntity.RecipeRatings || null,
     });
   }
 
@@ -22,9 +23,10 @@ class RecipeMapper {
     return {
       title: recipeSaveDto.title,
       description: recipeSaveDto.description,
+      preparation: recipeSaveDto.preparation,
       image: recipeSaveDto.image,
       userId: recipeSaveDto.userId,
-      ingredients: recipeSaveDto.ingredients || []
+      ingredients: recipeSaveDto.ingredients || [],
     };
   }
 
@@ -35,9 +37,10 @@ class RecipeMapper {
       id: recipeDto.id,
       title: recipeDto.title,
       description: recipeDto.description,
+      preparation: recipeDto.preparation,
       image: recipeDto.image,
       userId: recipeDto.user ? recipeDto.user.id : recipeDto.userId,
-      ingredients: recipeDto.ingredients || []
+      ingredients: recipeDto.ingredients || [],
     };
   }
 }

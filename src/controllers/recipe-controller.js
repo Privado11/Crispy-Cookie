@@ -1,12 +1,10 @@
 const RecipeService = require("../services/recipe-service");
-const RecipeSaveDto = require("../dtos/recipe/recipe-save-dto");
 const AppError = require("../utils/app-error");
 
 class RecipeController {
   static async create(req, res, next) {
     try {
-      const dto = new RecipeSaveDto(req.body);
-      const recipe = await RecipeService.create(dto);
+      const recipe = await RecipeService.create(req.body, req.userId);
       res.status(201).json(recipe);
     } catch (err) {
       next(err);
@@ -33,11 +31,10 @@ class RecipeController {
 
   static async update(req, res, next) {
     try {
-      const dto = new RecipeSaveDto(req.body);
       const recipe = await RecipeService.update(
         req.params.id,
-        dto,
-        req.body.userId
+        req.body,
+        req.userId
       );
       res.json(recipe);
     } catch (err) {
@@ -47,7 +44,7 @@ class RecipeController {
 
   static async delete(req, res, next) {
     try {
-      await RecipeService.delete(req.params.id, req.body.userId);
+      await RecipeService.delete(req.params.id, req.userId);
       res.json({ message: "Receta eliminada" });
     } catch (err) {
       next(err);

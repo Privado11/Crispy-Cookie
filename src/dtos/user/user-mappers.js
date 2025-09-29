@@ -1,5 +1,4 @@
 const UserDto = require("./user-dto");
-const UserSaveDto = require("./user-save-dto");
 
 class UserMapper {
   static toDto(userEntity) {
@@ -9,6 +8,7 @@ class UserMapper {
       firstName: userEntity.firstName,
       lastName: userEntity.lastName,
       email: userEntity.email,
+      createdAt: userEntity.createdAt,
     });
   }
 

@@ -1,12 +1,10 @@
 const UserService = require("../services/user-service");
-const UserSaveDto = require("../dtos/user/user-save-dto");
 
 class UserController {
-  static async create(req, res, next) {
+  static async getAll(req, res, next) {
     try {
-      const dto = new UserSaveDto(req.body);
-      const user = await UserService.create(dto);
-      res.status(201).json(user);
+      const users = await UserService.getAll();
+      res.json(users);
     } catch (err) {
       next(err);
     }
@@ -23,8 +21,7 @@ class UserController {
 
   static async update(req, res, next) {
     try {
-      const dto = new UserSaveDto(req.body);
-      const user = await UserService.update(req.params.id, dto);
+      const user = await UserService.update(req.params.id, req.body, req.userId);
       res.json(user);
     } catch (err) {
       next(err);
@@ -33,7 +30,7 @@ class UserController {
 
   static async delete(req, res, next) {
     try {
-      await UserService.delete(req.params.id);
+      await UserService.delete(req.params.id, req.userId);
       res.json({ message: "Usuario eliminado" });
     } catch (err) {
       next(err);

@@ -9,6 +9,8 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "recipeId",
       });
       Recipe.belongsTo(models.User, { foreignKey: "userId" });
+      Recipe.hasMany(models.RecipeRating, { foreignKey: "recipeId" });
+      Recipe.hasMany(models.RecipeComment, { foreignKey: "recipeId" });
     }
   }
 
@@ -19,6 +21,10 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
       },
       description: {
+        type: DataTypes.TEXT,
+        allowNull: false,
+      },
+      preparation: {
         type: DataTypes.TEXT,
         allowNull: false,
       },

@@ -1,113 +1,125 @@
-const { Recipe, User, Ingredient, RecipeIngredient } = require("../models");
+const {
+  Recipe,
+  User,
+  Ingredient,
+  RecipeIngredient,
+  RecipeRating,
+  RecipeComment,
+} = require("../models");
 const RecipeMapper = require("../dtos/recipe/recipe-mappers");
+const RecipeSaveDto = require("../dtos/recipe/recipe-save-dto");
 const { Op } = require("sequelize");
 const AppError = require("../utils/app-error");
 
 class RecipeService {
-  static async create(recipeSaveDto) {
-    const recipeEntity = RecipeMapper.saveDtoToEntity(recipeSaveDto);
-
-    const recipe = await Recipe.create({
-      title: recipeEntity.title,
-      description: recipeEntity.description,
-      image: recipeEntity.image,
-      userId: recipeEntity.userId,
-    });
-
-    if (recipeEntity.ingredients && recipeEntity.ingredients.length > 0) {
-      for (const ing of recipeEntity.ingredients) {
-        let ingredient;
-
-        if (ing.ingredientId) {
-          ingredient = await Ingredient.findByPk(ing.ingredientId);
-        }
-
-        if (!ingredient) {
-          ingredient = await Ingredient.findOne({ where: { name: ing.name } });
-          if (!ingredient) {
-            ingredient = await Ingredient.create({ name: ing.name });
-          }
-        }
-
-        await RecipeIngredient.create({
-          recipeId: recipe.id,
-          ingredientId: ingredient.id,
-          quantity: ing.quantity,
-        });
-      }
+  static async create(recipeData, userId) {
+    if (!userId) {
+      throw new AppError("Usuario no autenticado", 401);
     }
 
-    const createdRecipe = await Recipe.findByPk(recipe.id, {
+    const recipeSaveDto = new RecipeSaveDto({
+      ...recipeData,
+      userId: userId,
+    });
+    const recipeEntity = RecipeMapper.saveDtoToEntity(recipeSaveDto);
+
+    const recipe = await Recipe.create(recipeEntity);
+
+    if (recipeEntity.ingredients?.length > 0) {
+      await Promise.all(
+        recipeEntity.ingredients.map(async (ing) => {
+          let ingredient;
+
+          if (ing.ingredientId) {
+            ingredient = await Ingredient.findByPk(ing.ingredientId);
+          }
+
+          if (!ingredient) {
+            [ingredient] = await Ingredient.findOrCreate({
+              where: { name: ing.name },
+            });
+          }
+
+          await RecipeIngredient.upsert({
+            recipeId: recipe.id,
+            ingredientId: ingredient.id,
+            quantity: ing.quantity,
+          });
+        })
+      );
+    }
+
+    await recipe.reload({
       include: [
         { model: User },
-        { model: Ingredient, through: { attributes: ["quantity"] } },
+        {
+          model: Ingredient,
+        },
       ],
     });
 
-    return RecipeMapper.toDto(createdRecipe);
+    return RecipeMapper.toDto(recipe);
   }
 
-  static async update(id, recipeSaveDto, currentUserId) {
+  static async update(id, recipeData, currentUserId) {
     const recipe = await Recipe.findByPk(id);
     if (!recipe) throw new AppError("Receta no encontrada", 404);
     if (recipe.userId !== currentUserId) {
       throw new AppError("No autorizado para editar esta receta", 403);
     }
 
+    delete recipeData.userId;
+    const recipeSaveDto = new RecipeSaveDto(recipeData);
     const recipeEntity = RecipeMapper.saveDtoToEntity(recipeSaveDto);
 
-    await Recipe.update(
-      {
-        title: recipeEntity.title,
-        description: recipeEntity.description,
-        image: recipeEntity.image,
-        userId: recipeEntity.userId,
-      },
-      { where: { id } }
-    );
+    await Recipe.update(recipeEntity, { where: { id } });
 
-    if (recipeEntity.ingredients) {
-      await RecipeIngredient.destroy({ where: { recipeId: id } });
+    if (recipeEntity.ingredients?.length > 0) {
+      await RecipeIngredient.destroy({ where: { recipeId: recipe.id } });
 
-      for (const ing of recipeEntity.ingredients) {
-        let ingredient;
+      await Promise.all(
+        recipeEntity.ingredients.map(async (ing) => {
+          let ingredient;
 
-        if (ing.ingredientId) {
-          ingredient = await Ingredient.findByPk(ing.ingredientId);
-        }
-
-        if (!ingredient) {
-          ingredient = await Ingredient.findOne({ where: { name: ing.name } });
-          if (!ingredient) {
-            ingredient = await Ingredient.create({ name: ing.name });
+          if (ing.ingredientId) {
+            ingredient = await Ingredient.findByPk(ing.ingredientId);
           }
-        }
 
-        await RecipeIngredient.create({
-          recipeId: id,
-          ingredientId: ingredient.id,
-          quantity: ing.quantity,
-        });
-      }
+          if (!ingredient) {
+            [ingredient] = await Ingredient.findOrCreate({
+              where: { name: ing.name },
+            });
+          }
+
+          await RecipeIngredient.create({
+            recipeId: recipe.id,
+            ingredientId: ingredient.id,
+            quantity: ing.quantity,
+          });
+        })
+      );
     }
 
-    const updatedRecipe = await Recipe.findByPk(id, {
-      include: [
-        { model: User },
-        { model: Ingredient, through: { attributes: ["quantity"] } },
-      ],
+    await recipe.reload({
+      include: [{ model: User }, { model: Ingredient }],
     });
 
-    return RecipeMapper.toDto(updatedRecipe);
+    return RecipeMapper.toDto(recipe);
   }
 
   static async getAll() {
     const recipes = await Recipe.findAll({
       include: [
         { model: User },
-        { model: Ingredient, through: { attributes: ["quantity"] } },
+        { model: Ingredient },
+        { model: RecipeRating, include: [{ model: User }] },
+        {
+          model: RecipeComment,
+          include: [{ model: User }],
+        },
       ],
     });
+
     return recipes.map((recipe) => RecipeMapper.toDto(recipe));
   }
 
@@ -115,7 +127,9 @@ class RecipeService {
     const recipe = await Recipe.findByPk(id, {
       include: [
         { model: User },
-        { model: Ingredient, through: { attributes: ["quantity"] } },
+        { model: Ingredient },
+        { model: RecipeRating },
+        { model: RecipeComment },
       ],
     });
     if (!recipe) throw new AppError("Receta no encontrada", 404);
@@ -133,29 +147,41 @@ class RecipeService {
   }
 
   static async search(query) {
-    const recipes = await Recipe.findAll({
-      include: [
-        { model: User },
-        {
-          model: Ingredient,
-          through: { attributes: ["quantity"] },
-          required: false 
-        }
-      ],
+    const recipesByTitleDesc = await Recipe.findAll({
       where: {
         [Op.or]: [
           { title: { [Op.like]: `%${query}%` } },
           { description: { [Op.like]: `%${query}%` } },
-          { "$Ingredients.name$": { [Op.like]: `%${query}%` } }
-        ]
+        ],
       },
-      subQuery: false 
+      attributes: ["id"],
     });
-  
+
+    const recipesByIngredients = await Recipe.findAll({
+      include: [{ model: Ingredient }],
+      attributes: ["id"],
+    });
+
+    const allRecipeIds = [
+      ...recipesByTitleDesc.map((r) => r.id),
+      ...recipesByIngredients.map((r) => r.id),
+    ];
+
+    const uniqueRecipeIds = [...new Set(allRecipeIds)];
+
+    if (uniqueRecipeIds.length === 0) {
+      return [];
+    }
+
+    const recipes = await Recipe.findAll({
+      include: [{ model: User }, { model: Ingredient }],
+      where: {
+        id: { [Op.in]: uniqueRecipeIds },
+      },
+    });
+
     return recipes.map((r) => RecipeMapper.toDto(r));
   }
-  
-  
 }
 
 module.exports = RecipeService;
