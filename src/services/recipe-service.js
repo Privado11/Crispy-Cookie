@@ -182,6 +182,31 @@ class RecipeService {
 
     return recipes.map((r) => RecipeMapper.toDto(r));
   }
+
+  static async getShoppingList(recipeId) {
+    const recipe = await Recipe.findByPk(recipeId, {
+      include: [
+        {
+          model: Ingredient,
+          through: {
+            attributes: ["quantity"],
+          },
+        },
+      ],
+    });
+
+    if (!recipe) throw new AppError("Receta no encontrada", 404);
+
+    const shoppingList = recipe.Ingredients.map((ing) => ({
+      name: ing.name,
+      quantity: ing.RecipeIngredient.quantity,
+    }));
+
+    return {
+      recipeName: recipe.title,
+      Ingredients: shoppingList,
+    };
+  }
 }
 
 module.exports = RecipeService;

@@ -63,6 +63,15 @@ class RecipeController {
       next(err);
     }
   }
+
+  static async getShoppingList(req, res, next) {
+    try {
+      const shoppingList = await RecipeService.getShoppingList(req.params.id);
+      res.json(shoppingList);
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 module.exports = RecipeController;

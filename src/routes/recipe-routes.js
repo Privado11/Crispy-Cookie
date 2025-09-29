@@ -11,5 +11,6 @@ router.delete("/:id", authMiddleware, RecipeController.delete);
 router.get("/", authMiddleware, RecipeController.getAll);
 router.get("/search", authMiddleware, RecipeController.search);
 router.get("/:id", authMiddleware, RecipeController.getById);
+router.get("/:id/shopping-list", authMiddleware, RecipeController.getShoppingList);
 
 module.exports = router;

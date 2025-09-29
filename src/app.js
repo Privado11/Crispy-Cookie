@@ -5,7 +5,7 @@ const recipeRoutes = require("./routes/recipe-routes");
 const commentRoutes = require("./routes/comment-routes");
 const ratingRoutes = require("./routes/rating-routes");
 const favoriteRoutes = require("./routes/favorite-routes");
-const shoppingListRoutes = require("./routes/shopping-list-routes");
+const shoppingListRoutes = require("./routes/shopping-list.routes");
 const errorHandler = require("./middlewares/error-handler");
 
 const app = express();
@@ -18,7 +18,6 @@ app.use("/api/v1/recipes", commentRoutes);
 app.use("/api/v1/recipes", ratingRoutes);
 app.use("/api/v1/favorites", favoriteRoutes);
 app.use("/api/v1/shopping-list", shoppingListRoutes);
-
 
 app.use(errorHandler);
 
